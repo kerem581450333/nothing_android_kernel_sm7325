@@ -200,10 +200,10 @@ jobs:
             cd KernelSU-Next
             git remote add KSUN https://github.com/MirahSyakilla/KSUN.git
             git fetch KSUN
-            # Step 3: Switch to the susfs-hookless branch tracking KSUN
-            git checkout -b susfs-hookless KSUN/susfs-hookless
+            # Step 3: Switch to the susfs+nomount-hookless branch tracking KSUN
+            git checkout -b susfs-hookless KSUN/susfs+nomount-hookless
             cd ..
-            echo "✅ KernelSU-Next (KSUN/susfs-hookless) ready"
+            echo "✅ KernelSU-Next (KSUN/susfs+nomount-hookless) ready"
           fi
 
           # Inject CONFIG_KSU=y — shared by both variants
