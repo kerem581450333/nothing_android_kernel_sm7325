@@ -21,6 +21,14 @@ on:
           - KernelSU
           - ReSukiSU
           - KernelSU-Next
+      enable_basebandguard:
+        description: 'Integrate Baseband-guard LSM (yes/no)'
+        required: false
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
       build_tag:
         description: 'Build tag for ZIP name (e.g., Test/Perf/Normal)'
         required: false
@@ -214,6 +222,40 @@ jobs:
             echo "⚠️  Defconfig not found at $DEFCONFIG_PATH — skipping CONFIG_KSU injection"
           fi
 
+      # -------------------------------------------------------------------
+      # Baseband-guard LSM integration — controlled by the
+      # enable_basebandguard input. Mirrors the upstream quick-start:
+      #   1. Run setup.sh from the vc-teahouse/Baseband-guard repo,
+      #      which vendors the LSM sources into the kernel tree.
+      #   2. Inject CONFIG_BBG=y into the defconfig.
+      #   3. Patch security/Kconfig so the LSM "default" list includes
+      #      baseband_guard alongside selinux — required for CI/cloud
+      #      builds since there's no interactive menuconfig step to
+      #      enable it by hand.
+      # -------------------------------------------------------------------
+      - name: Setup Baseband-guard
+        if: ${{ github.event.inputs.enable_basebandguard == 'yes' }}
+        run: |
+          set -e
+          DEFCONFIG_PATH="arch/arm64/configs/${{ github.event.inputs.defconfig }}"
+          echo "🛡️  Integrating Baseband-guard LSM..."
+          wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+
+          if [ -f "$DEFCONFIG_PATH" ]; then
+            echo "✅ Injecting CONFIG_BBG=y into defconfig ($DEFCONFIG_PATH)"
+            echo -e "\n# Baseband-guard\nCONFIG_BBG=y" >> "$DEFCONFIG_PATH"
+          else
+            echo "⚠️  Defconfig not found at $DEFCONFIG_PATH — skipping CONFIG_BBG injection"
+          fi
+
+          if [ -f "security/Kconfig" ]; then
+            echo "🩹 Patching security/Kconfig LSM default list..."
+            sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
+            echo "✅ security/Kconfig patched (baseband_guard added to LSM default list)"
+          else
+            echo "⚠️  security/Kconfig not found — skipping LSM default patch"
+          fi
+
       - name: Configure kernel (defconfig)
         run: |
           make O=out \
@@ -327,6 +369,11 @@ jobs:
           SU_VARIANT="${{ github.event.inputs.su_variant }}"
           if [ "$SU_VARIANT" != "none" ]; then
             SAFE_TAG="${SAFE_TAG}-${SU_VARIANT}"
+          fi
+
+          # Append BasebandGuard suffix when it was integrated
+          if [ "${{ github.event.inputs.enable_basebandguard }}" = "yes" ]; then
+            SAFE_TAG="${SAFE_TAG}-BBG"
           fi
 
           cd anykernel
