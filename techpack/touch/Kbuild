@@ -4,6 +4,10 @@ ifeq ($(TOUCH_ROOT),)
 TOUCH_ROOT=$(srctree)/techpack/touch
 endif
 
+ifeq ($(FTS_TOUCH_ROOT),)
+TOUCH_ROOT=$(srctree)/drivers/input/touchscreen
+endif
+
 ifeq ($(CONFIG_ARCH_LAHAINA), y)
 	include $(TOUCH_ROOT)/config/gki_lahainatouch.conf
 	LINUX_INC += -include $(TOUCH_ROOT)/config/gki_lahainatouchconf.h
@@ -58,4 +62,23 @@ ifeq ($(CONFIG_TOUCHSCREEN_GOODIX_BRL), y)
 	endif
 
 	obj-$(CONFIG_MSM_TOUCH) += goodix_ts.o
+endif
+
+ifeq ($(CONFIG_TOUCHSCREEN_FOCALTECH_3658u), y)
+	LINUX_INC += -include $(FTS_TOUCH_ROOT)/focaltech_touch_ft3658u/focaltech_common.h
+	LINUX_INC += -include $(FTS_TOUCH_ROOT)/focaltech_touch_ft3658u/focaltech_config.h
+	LINUX_INC += -include $(FTS_TOUCH_ROOT)/focaltech_touch_ft3658u/focaltech_core.h
+	LINUX_INC += -include $(FTS_TOUCH_ROOT)/focaltech_touch_ft3658u/focaltech_flash.h
+
+	focaltech_touch_ft3658u-y := \
+		focaltech_touch_ft3658u/focaltech_core.o \
+		focaltech_touch_ft3658u/focaltech_ex_fun.o \
+		focaltech_touch_ft3658u/focaltech_ex_mode.o \
+		focaltech_touch_ft3658u/focaltech_gesture.o \
+		focaltech_touch_ft3658u/focaltech_esdcheck.o \
+		focaltech_touch_ft3658u/focaltech_point_report_check.o \
+		focaltech_touch_ft3658u/focaltech_flash.o \
+		focaltech_touch_ft3658u/focaltech_spi.o
+
+	obj-$(CONFIG_MSM_TOUCH) += focaltech_touch_ft3658u.o
 endif
