@@ -1489,7 +1489,7 @@ out:
 	return ret;
 }
 
-static int fts_ts_i2c_probe(struct i2c_client *client)
+static int fts_ts_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret = 0;
 	struct fts_ts_data *ts_data = NULL;
@@ -1536,9 +1536,10 @@ static int fts_ts_i2c_probe(struct i2c_client *client)
 	return 0;
 }
 
-static void fts_ts_i2c_remove(struct i2c_client *client)
+static int fts_ts_i2c_remove(struct i2c_client *client)
 {
-	fts_ts_remove_entry(i2c_get_clientdata(client));
+        fts_ts_remove_entry(i2c_get_clientdata(client));
+        return 0;
 }
 
 static const struct i2c_device_id fts_ts_i2c_id[] = {
@@ -1631,9 +1632,10 @@ static int fts_ts_spi_probe(struct spi_device *spi)
 	return 0;
 }
 
-static void fts_ts_spi_remove(struct spi_device *spi)
+static int fts_ts_spi_remove(struct spi_device *spi)
 {
-	fts_ts_remove_entry(spi_get_drvdata(spi));
+        fts_ts_remove_entry(spi_get_drvdata(spi));
+        return 0;
 }
 
 static const struct spi_device_id fts_ts_spi_id[] = {
