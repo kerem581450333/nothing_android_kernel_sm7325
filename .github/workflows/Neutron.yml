@@ -166,20 +166,49 @@ jobs:
       #   KernelSU-Next   → KernelSU-Next setup.sh → add KSUN remote →
       #                     fetch → checkout susfs-hookless branch
       # All variants inject CONFIG_KSU=y into the defconfig afterwards.
+      #
+      # NOTE: the official setup.sh scripts sometimes leave files/dirs
+      # under KernelSU/.git with restrictive permissions (git marks
+      # objects read-only). A plain `rm -rf` silently skips anything it
+      # can't unlink and can fail with "Directory not empty" instead of
+      # actually removing the tree. We chmod the whole directory writable
+      # first, retry once, and hard-fail with a listing if it still won't
+      # go away, so this can never surface as a mystery build failure again.
       # -------------------------------------------------------------------
       - name: Setup root solution (KernelSU / ReSukiSU / KernelSU-Next)
         if: ${{ github.event.inputs.su_variant != 'none' }}
         run: |
+          set -e
           VARIANT="${{ github.event.inputs.su_variant }}"
           DEFCONFIG_PATH="arch/arm64/configs/${{ github.event.inputs.defconfig }}"
           echo "🔧 Root variant selected: $VARIANT"
+
+          # Robustly remove a directory even if git left read-only files
+          # or non-writable subdirectories inside it (e.g. .git/objects).
+          force_remove() {
+            local dir="$1"
+            [ -e "$dir" ] || return 0
+            chmod -R u+rwX "$dir" 2>/dev/null || true
+            rm -rf "$dir"
+            if [ -e "$dir" ]; then
+              echo "   ↻ retrying removal of $dir after re-chmod..."
+              sleep 1
+              chmod -R u+rwX "$dir" 2>/dev/null || true
+              rm -rf "$dir"
+            fi
+            if [ -e "$dir" ]; then
+              echo "❌ Could not remove '$dir', remaining contents:"
+              find "$dir" -maxdepth 3
+              exit 1
+            fi
+          }
 
           if [ "$VARIANT" = "KernelSU" ]; then
             echo "── KernelSU setup ──────────────────────────────────────────"
             # Step 1: Run the official tiann KernelSU setup script
             curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/master/kernel/setup.sh" | bash -s master
             # Step 2: Remove the KernelSU folder created by the setup script
-            rm -rf KernelSU
+            force_remove KernelSU
             # Step 3: Clone William24hmar KernelSU fork (master-susfs branch)
             git clone -b master-susfs https://github.com/William24hmar/KernelSU.git
             echo "✅ KernelSU (William24hmar/KernelSU) ready"
@@ -189,7 +218,7 @@ jobs:
             # Step 1: Run the ReSukiSU setup script
             curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -
             # Step 2: Remove the KernelSU folder created by the setup script
-            rm -rf KernelSU
+            force_remove KernelSU
             # Step 3: Clone Will ResukiSU fork (main branch) into the
             # "KernelSU" folder name — this is the path the setup script's
             # symlink (drivers/kernelsu) and Makefile/Kconfig patches
