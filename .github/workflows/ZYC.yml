@@ -6,7 +6,7 @@ on:
       kernel_branch:
         description: 'Branch to build (e.g., LosKernel-23)'
         required: true
-        default: 'Staging-Kernel'
+        default: 'Nethunter'
       defconfig:
         description: 'Defconfig name (without path)'
         required: true
